@@ -1,4 +1,8 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, UserRole } from './entities/user.entity';
@@ -42,7 +46,17 @@ export class UsersService {
    */
   async findAll(): Promise<User[]> {
     return await this.userRepository.find({
-      select: ['id', 'email', 'nome', 'role', 'isActive', 'telefone', 'avatar', 'createdAt', 'updatedAt'],
+      select: [
+        'id',
+        'email',
+        'nome',
+        'role',
+        'isActive',
+        'telefone',
+        'avatar',
+        'createdAt',
+        'updatedAt',
+      ],
     });
   }
 
@@ -109,7 +123,7 @@ export class UsersService {
 
     await this.userRepository.update(id, updateData);
     const updatedUser = await this.findById(id);
-    
+
     if (!updatedUser) {
       throw new NotFoundException('Erro ao atualizar usuário');
     }
@@ -132,7 +146,10 @@ export class UsersService {
   /**
    * Valida senha do usuário
    */
-  async validatePassword(password: string, hashedPassword: string): Promise<boolean> {
+  async validatePassword(
+    password: string,
+    hashedPassword: string,
+  ): Promise<boolean> {
     return await bcrypt.compare(password, hashedPassword);
   }
-} 
+}

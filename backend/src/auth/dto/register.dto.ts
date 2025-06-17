@@ -1,4 +1,10 @@
-import { IsEmail, IsString, MinLength, IsEnum, IsOptional, IsPhoneNumber } from 'class-validator';
+import {
+  IsEmail,
+  IsString,
+  MinLength,
+  IsEnum,
+  IsOptional,
+} from 'class-validator';
 import { UserRole } from '../../users/entities/user.entity';
 
 export class RegisterDto {
@@ -19,4 +25,4 @@ export class RegisterDto {
   @IsOptional()
   @IsString({ message: 'Telefone deve ser uma string' })
   telefone?: string;
-} 
+}

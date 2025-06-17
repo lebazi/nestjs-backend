@@ -1,78 +1,33 @@
-import { Injectable, BadRequestException, UnauthorizedException, ConflictException } from '@nestjs/common';
-import { UsersService, CreateUserData } from '../users/users.service';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  Logger,
+} from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
-import { User } from '../users/entities/user.entity';
 
-// Tipo para usuário sem senha
-export type UserWithoutPassword = {
-  id: string;
-  email: string;
-  nome: string;
-  role: string;
-  isActive: boolean;
-  telefone?: string;
-  avatar?: string;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
+/**
+ * Serviço de autenticação responsável por login, registro e validação de usuários
+ */
 @Injectable()
 export class AuthService {
-  constructor(private readonly usersService: UsersService) {}
+  private readonly logger = new Logger(AuthService.name);
+
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly jwtService: JwtService,
+  ) {}
 
   /**
-   * Registra um novo usuário
+   * Realiza o login do usuário
+   * @param loginDto Dados de login (email e senha)
+   * @returns Token JWT e dados do usuário
    */
-  async register(registerDto: RegisterDto): Promise<{ message: string; user: UserWithoutPassword }> {
-    try {
-      // Verifica se o email já existe
-      const existingUser = await this.usersService.findByEmail(registerDto.email);
-      if (existingUser) {
-        throw new ConflictException('Email já está em uso');
-      }
-
-      // Preparar dados do usuário
-      const userData: CreateUserData = {
-        email: registerDto.email,
-        password: registerDto.password,
-        nome: registerDto.nome,
-        role: registerDto.role || 'cliente',
-        telefone: registerDto.telefone,
-      };
-
-      const user = await this.usersService.create(userData);
-
-      // Retornar dados sem a senha
-      const userWithoutPassword: UserWithoutPassword = {
-        id: user.id,
-        email: user.email,
-        nome: user.nome,
-        role: user.role,
-        isActive: user.isActive,
-        telefone: user.telefone,
-        avatar: user.avatar,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      };
-
-      return {
-        message: 'Usuário registrado com sucesso',
-        user: userWithoutPassword,
-      };
-    } catch (error) {
-      if (error instanceof ConflictException) {
-        throw error;
-      }
-      throw new BadRequestException('Erro ao registrar usuário');
-    }
-  }
-
-  /**
-   * Faz login do usuário
-   */
-  async login(loginDto: LoginDto): Promise<{ message: string; user: UserWithoutPassword }> {
+  async login(loginDto: LoginDto) {
     try {
       const { email, password } = loginDto;
 
@@ -82,103 +37,176 @@ export class AuthService {
         throw new UnauthorizedException('Credenciais inválidas');
       }
 
-      // Verificar se o usuário está ativo
-      if (!user.isActive) {
-        throw new UnauthorizedException('Conta desativada');
-      }
-
       // Verificar senha
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
         throw new UnauthorizedException('Credenciais inválidas');
       }
 
-      // Retornar dados sem a senha
-      const userWithoutPassword: UserWithoutPassword = {
-        id: user.id,
+      // Verificar se usuário está ativo
+      if (!user.isActive) {
+        throw new UnauthorizedException('Usuário inativo');
+      }
+
+      // Gerar token JWT
+      const payload = {
+        sub: user.id,
         email: user.email,
-        nome: user.nome,
         role: user.role,
-        isActive: user.isActive,
-        telefone: user.telefone,
-        avatar: user.avatar,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
       };
 
+      const accessToken = await this.jwtService.signAsync(payload);
+
+      this.logger.log(`Login realizado com sucesso para: ${email}`);
+
       return {
-        message: 'Login realizado com sucesso',
-        user: userWithoutPassword,
+        accessToken,
+        user: {
+          id: user.id,
+          email: user.email,
+          nome: user.nome,
+          role: user.role,
+          isActive: user.isActive,
+          telefone: user.telefone,
+          avatar: user.avatar,
+        },
       };
     } catch (error) {
-      if (error instanceof UnauthorizedException) {
-        throw error;
+      this.logger.error(
+        `Erro no login: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Registra um novo usuário
+   * @param registerDto Dados de registro
+   * @returns Token JWT e dados do usuário criado
+   */
+  async register(registerDto: RegisterDto) {
+    try {
+      const { email, password, nome, telefone, role } = registerDto;
+
+      // Verificar se email já existe
+      const existingUser = await this.usersService.findByEmail(email);
+      if (existingUser) {
+        throw new ConflictException('Email já está em uso');
       }
-      throw new BadRequestException('Erro ao fazer login');
-    }
-  }
 
-  /**
-   * Faz logout do usuário
-   */
-  async logout(): Promise<{ message: string }> {
-    return {
-      message: 'Logout realizado com sucesso',
-    };
-  }
+      // Hash da senha
+      const saltRounds = 12;
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-  /**
-   * Verifica se o usuário está autenticado
-   */
-  async me(userId?: string): Promise<{ authenticated: boolean; user: UserWithoutPassword | null }> {
-    if (!userId) {
-      return {
-        authenticated: false,
-        user: null,
+      // Criar usuário
+      const userData = {
+        email,
+        password: hashedPassword,
+        nome,
+        telefone,
+        role,
       };
-    }
 
+      const user = await this.usersService.create(userData);
+
+      // Gerar token JWT
+      const payload = {
+        sub: user.id,
+        email: user.email,
+        role: user.role,
+      };
+
+      const accessToken = await this.jwtService.signAsync(payload);
+
+      this.logger.log(`Usuário registrado com sucesso: ${email}`);
+
+      return {
+        accessToken,
+        user: {
+          id: user.id,
+          email: user.email,
+          nome: user.nome,
+          role: user.role,
+          isActive: user.isActive,
+          telefone: user.telefone,
+          avatar: user.avatar,
+        },
+      };
+    } catch (error) {
+      this.logger.error(
+        `Erro no registro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Valida token JWT
+   * @param token Token JWT
+   * @returns Dados do usuário se válido
+   */
+  async validateToken(token: string) {
+    try {
+      const payload = await this.jwtService.verifyAsync(token);
+      const user = await this.usersService.findById(payload.sub as string);
+
+      if (!user || !user.isActive) {
+        throw new UnauthorizedException('Token inválido');
+      }
+
+      return user;
+    } catch {
+      throw new UnauthorizedException('Token inválido');
+    }
+  }
+
+  /**
+   * Realiza logout (placeholder - em implementação stateless não há ação específica)
+   */
+  logout() {
+    // Em uma implementação stateless com JWT, não há ação específica de logout
+    // Em uma implementação futura, poderíamos adicionar blacklist de tokens
+    this.logger.log('Logout realizado');
+    return { message: 'Logout realizado com sucesso' };
+  }
+
+  /**
+   * Verifica se o usuário tem a role necessária
+   * @param userRole Role do usuário
+   * @param requiredRoles Roles necessárias
+   * @returns True se autorizado
+   */
+  hasRequiredRole(userRole: string, requiredRoles: string[]): boolean {
+    return requiredRoles.includes(userRole);
+  }
+
+  /**
+   * Busca usuário por ID
+   * @param userId ID do usuário
+   * @returns Dados do usuário
+   */
+  async findUserById(userId: string) {
     try {
       const user = await this.usersService.findById(userId);
-      if (!user || !user.isActive) {
-        return {
-          authenticated: false,
-          user: null,
-        };
+      if (!user) {
+        throw new UnauthorizedException('Usuário não encontrado');
       }
-
-      const userWithoutPassword: UserWithoutPassword = {
-        id: user.id,
-        email: user.email,
-        nome: user.nome,
-        role: user.role,
-        isActive: user.isActive,
-        telefone: user.telefone,
-        avatar: user.avatar,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      };
-
-      return {
-        authenticated: true,
-        user: userWithoutPassword,
-      };
-    } catch (error) {
-      return {
-        authenticated: false,
-        user: null,
-      };
+      return user;
+    } catch {
+      this.logger.error(`Erro ao buscar usuário: ${userId}`);
+      throw new UnauthorizedException('Usuário não encontrado');
     }
   }
 
   /**
-   * Health check do serviço
+   * Health check do serviço de autenticação
+   * @returns Status do serviço
    */
-  async healthCheck(): Promise<{ status: string; message: string; timestamp: string }> {
+  healthCheck() {
     return {
       status: 'ok',
-      message: 'Serviço de autenticação funcionando',
+      service: 'AuthService',
       timestamp: new Date().toISOString(),
     };
   }
-} 
+}

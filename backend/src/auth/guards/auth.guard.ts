@@ -8,20 +8,20 @@ import { Request } from 'express';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  async canActivate(context: ExecutionContext): Promise<boolean> {
+  canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<Request>();
-    
+
     try {
       // Verificar se há um token de autenticação no header
       const authorization = request.headers.authorization;
-      
+
       if (!authorization) {
         throw new UnauthorizedException('Token de autenticação não fornecido');
       }
 
       // Extrair o token do header Authorization
-      const token = authorization.replace('Bearer ', '');
-      
+      const token = this.extractTokenFromHeader(request);
+
       if (!token) {
         throw new UnauthorizedException('Token inválido');
       }
@@ -29,9 +29,9 @@ export class AuthGuard implements CanActivate {
       // Por enquanto, apenas verificamos se o token existe
       // Em uma implementação completa, verificaríamos JWT aqui
       request['user'] = { id: token }; // Simplificado para MVP
-      
+
       return true;
-    } catch (error) {
+    } catch {
       throw new UnauthorizedException('Token de autenticação inválido');
     }
   }
@@ -40,4 +40,4 @@ export class AuthGuard implements CanActivate {
     const [type, token] = request.headers.authorization?.split(' ') ?? [];
     return type === 'Bearer' ? token : undefined;
   }
-} 
+}

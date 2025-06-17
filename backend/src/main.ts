@@ -4,9 +4,9 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  
+
   const app = await NestFactory.create(AppModule);
-  
+
   // Configuração global de validação
   app.useGlobalPipes(
     new ValidationPipe({
@@ -42,9 +42,9 @@ async function bootstrap() {
 
   // Porta do servidor
   const port = process.env.PORT || 3001;
-  
+
   await app.listen(port);
-  
+
   logger.log(`🚀 Servidor rodando na porta ${port}`);
   logger.log(`📊 Documentação disponível em http://localhost:${port}/api`);
   logger.log(`🔗 Frontend conectado em http://localhost:3000`);

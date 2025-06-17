@@ -52,7 +52,8 @@ export class User {
 
   // Método para remover senha do retorno
   toJSON() {
-    const { password, ...result } = this;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password: _password, ...result } = this;
     return result;
   }
-} 
+}

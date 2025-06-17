@@ -8,4 +8,4 @@ import { User } from './entities/user.entity';
   providers: [UsersService],
   exports: [UsersService, TypeOrmModule], // Exporta para uso em outros módulos
 })
-export class UsersModule {} 
+export class UsersModule {}

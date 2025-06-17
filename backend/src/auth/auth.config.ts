@@ -33,8 +33,10 @@ export const authConfig: AuthConfig = {
 
 // Configuração do banco de dados
 export const databaseConfig = {
-  url: process.env.DATABASE_URL || 'postgresql://nextjstestedb_owner:npg_aYor3jMgi4JG@ep-divine-bonus-ac63unww-pooler.sa-east-1.aws.neon.tech/nextjstestedb?sslmode=require',
+  url:
+    process.env.DATABASE_URL ||
+    'postgresql://nextjstestedb_owner:npg_aYor3jMgi4JG@ep-divine-bonus-ac63unww-pooler.sa-east-1.aws.neon.tech/nextjstestedb?sslmode=require',
   ssl: {
     rejectUnauthorized: false,
   },
-}; 
+};

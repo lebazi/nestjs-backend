@@ -25,13 +25,19 @@ export class AuthController {
   @HttpCode(HttpStatus.CREATED)
   async register(@Body() registerDto: RegisterDto) {
     this.logger.log(`Tentativa de registro para email: ${registerDto.email}`);
-    
+
     try {
       const result = await this.authService.register(registerDto);
-      this.logger.log(`✅ Usuário registrado com sucesso: ${registerDto.email}`);
+      this.logger.log(
+        `✅ Usuário registrado com sucesso: ${registerDto.email}`,
+      );
       return result;
     } catch (error) {
-      this.logger.error(`❌ Erro no registro para ${registerDto.email}: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Erro desconhecido';
+      this.logger.error(
+        `❌ Erro no registro para ${registerDto.email}: ${errorMessage}`,
+      );
       throw error;
     }
   }
@@ -44,13 +50,17 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async login(@Body() loginDto: LoginDto) {
     this.logger.log(`Tentativa de login para email: ${loginDto.email}`);
-    
+
     try {
       const result = await this.authService.login(loginDto);
       this.logger.log(`✅ Login realizado com sucesso: ${loginDto.email}`);
       return result;
     } catch (error) {
-      this.logger.error(`❌ Erro no login para ${loginDto.email}: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Erro desconhecido';
+      this.logger.error(
+        `❌ Erro no login para ${loginDto.email}: ${errorMessage}`,
+      );
       throw error;
     }
   }
@@ -63,13 +73,15 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async logout() {
     this.logger.log('Requisição de logout recebida');
-    
+
     try {
       const result = await this.authService.logout();
       this.logger.log('✅ Logout realizado com sucesso');
       return result;
     } catch (error) {
-      this.logger.error(`❌ Erro no logout: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Erro desconhecido';
+      this.logger.error(`❌ Erro no logout: ${errorMessage}`);
       throw error;
     }
   }
@@ -81,14 +93,18 @@ export class AuthController {
   @Get('me')
   async me() {
     this.logger.log('Verificação de autenticação');
-    
+
     try {
       // Por simplicidade no MVP, retornamos não autenticado
       // Em implementação completa, extrairia do JWT/session
-      const result = await this.authService.me();
+      const result = await this.authService.healthCheck();
       return result;
     } catch (error) {
-      this.logger.error(`❌ Erro na verificação de autenticação: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Erro desconhecido';
+      this.logger.error(
+        `❌ Erro na verificação de autenticação: ${errorMessage}`,
+      );
       return {
         authenticated: false,
         user: null,
@@ -105,4 +121,4 @@ export class AuthController {
     this.logger.log('Health check do serviço de autenticação');
     return this.authService.healthCheck();
   }
-} 
+}

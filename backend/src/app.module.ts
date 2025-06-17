@@ -14,10 +14,10 @@ import { databaseConfig } from './config/database.config';
       isGlobal: true,
       envFilePath: '.env',
     }),
-    
+
     // Configuração do banco de dados
     TypeOrmModule.forRoot(databaseConfig),
-    
+
     // Módulos da aplicação
     AuthModule,
     UsersModule,
