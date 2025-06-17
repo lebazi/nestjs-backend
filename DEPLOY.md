@@ -1,4 +1,174 @@
-# 🚀 Guia de Deploy - Railway
+# 🚀 Guia de Deploy - Railway (ATUALIZADO)
+
+## ✅ **Correções Aplicadas**
+- ✅ **Node.js atualizado** para versão 20
+- ✅ **Dockerfile corrigido** para usar Node 20
+- ✅ **Railway.json configurado** para usar Docker
+- ✅ **Engines especificados** em todos os package.json
+- ✅ **.nvmrc criado** para versão do Node
+
+## 🔧 **Problemas Corrigidos**
+
+### **1. ❌ Versão Node.js Incompatível**
+**Erro anterior:** Railway usava Node 18, mas dependências requeriam Node >= 20
+
+**✅ Solução aplicada:**
+- Dockerfile atualizado: `FROM node:20-alpine`
+- package.json engines: `"node": ">=20.0.0"`
+- .nvmrc criado com versão 20
+
+### **2. ❌ Railway usando Nixpacks em vez de Docker**
+**Erro anterior:** `cd frontend && npm ci` falhou porque Railway ignorava o Dockerfile
+
+**✅ Solução aplicada:**
+```json
+// railway.json
+{
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile"
+  }
+}
+```
+
+### **3. ❌ Comandos npm deprecated**
+**Erro anterior:** `npm ci --only=production` está deprecated
+
+**✅ Solução aplicada:**
+```dockerfile
+# Dockerfile - comandos atualizados
+RUN npm ci --omit=dev
+```
+
+## 🛠️ **Passos para Re-Deploy**
+
+### **Passo 1: Verificar Arquivos Atualizados**
+```bash
+# Verificar se todas as correções estão aplicadas
+cat .nvmrc                    # Deve mostrar: 20
+cat railway.json             # Deve usar DOCKERFILE
+grep "node.*20" */package.json # Deve mostrar engines >= 20.0.0
+```
+
+### **Passo 2: Commit e Push**
+```bash
+git add .
+git commit -m "🔧 Fix: Atualizar Node.js para v20 e corrigir Railway config"
+git push origin main
+```
+
+### **Passo 3: Re-Deploy no Railway**
+1. **Acessar Railway Dashboard**
+2. **Ir para o projeto**
+3. **Clicar em "Redeploy"** ou aguardar auto-deploy
+4. **Verificar logs** - não deve mais ter warnings de versão
+
+## 📋 **Checklist Pré-Deploy Atualizado**
+
+### **1. ✅ Versões Verificadas**
+- Node.js: ✅ v20 (via .nvmrc e engines)
+- NestJS: ✅ v11 compatível com Node 20
+- Next.js: ✅ v15 compatível com Node 20
+
+### **2. ✅ Configurações Docker**
+- Base image: ✅ `node:20-alpine`
+- Multi-stage build: ✅ Otimizado
+- Dependencies: ✅ `--omit=dev` (atualizado)
+- Railway builder: ✅ DOCKERFILE
+
+### **3. ✅ Scripts de Build**
+- Backend build: ✅ `nest build`
+- Frontend build: ✅ `next build`
+- Combined build: ✅ `npm run build`
+- Health check: ✅ `/api/auth/health`
+
+## 🚀 **Deploy Automático**
+
+### **Railway agora executará:**
+```bash
+# 1. Build stage (Node 20)
+npm ci                    # Install all deps
+cd backend && npm ci      # Backend deps
+cd frontend && npm ci     # Frontend deps
+npm run build            # Build both apps
+
+# 2. Production stage (Node 20)
+npm ci --omit=dev        # Production deps only
+cd backend && npm ci --omit=dev
+cd frontend && npm ci --omit=dev
+
+# 3. Start application
+npm run start            # Start both services
+```
+
+## 🌐 **Variáveis de Ambiente (Inalteradas)**
+
+```env
+# No Railway Dashboard
+DATABASE_URL=postgresql://neondb_owner:npg_QnbKA2r3yE5W@ep-green-boat-a5bj1b0z.us-east-2.aws.neon.tech/neondb?sslmode=require
+NODE_ENV=production
+JWT_SECRET=sua-chave-super-secreta-aqui
+PORT=3001
+NEXT_PUBLIC_API_URL=${{RAILWAY_STATIC_URL}}
+```
+
+## 🧪 **Testes Pós-Correção**
+
+### **1. Verificar Build Local (Opcional)**
+```bash
+# Testar Docker build localmente
+docker build -t salao-beleza-v20 .
+docker run -p 3000:3000 -p 3001:3001 salao-beleza-v20
+
+# Verificar versão Node
+docker run salao-beleza-v20 node --version
+# Deve retornar: v20.x.x
+```
+
+### **2. Verificar Deploy Railway**
+1. **Logs sem warnings** de versão
+2. **Build successful** 
+3. **Health check** respondendo
+4. **Aplicação funcionando**
+
+## 📊 **Logs Esperados (Corretos)**
+
+### **✅ Build logs deve mostrar:**
+```
+[production 6/12] RUN npm ci --omit=dev  ✔ 
+[production 7/12] RUN cd backend && npm ci --omit=dev  ✔ 
+[production 8/12] RUN cd frontend && npm ci --omit=dev  ✔ 
+```
+
+### **❌ NÃO deve mais aparecer:**
+```
+npm warn EBADENGINE Unsupported engine
+npm warn deprecated
+can't cd to frontend: No such file or directory
+```
+
+## 🔄 **Próximos Passos**
+
+1. **Push das correções** para o repositório
+2. **Aguardar auto-deploy** no Railway
+3. **Verificar logs** sem erros
+4. **Testar aplicação** funcionando
+5. **Configurar domínio** (se necessário)
+
+---
+
+## 📝 **Resumo das Correções**
+
+| Problema | Solução | Arquivo |
+|----------|---------|---------|
+| Node.js v18 incompatível | Atualizar para v20 | `Dockerfile`, `.nvmrc` |
+| Railway usando Nixpacks | Forçar uso de Docker | `railway.json` |
+| npm deprecated warnings | Usar `--omit=dev` | `Dockerfile` |
+| Engines não especificados | Adicionar engines | `package.json` (todos) |
+
+**Resultado esperado:** Deploy sem warnings e aplicação funcionando corretamente! 🎉
+
+## 🚀 Guia de Deploy - Railway
 
 ## ✅ **Status Atual**
 - ✅ **Builds concluídas** com sucesso
