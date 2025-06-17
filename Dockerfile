@@ -1,44 +1,36 @@
-# Build stage
-FROM node:20-alpine AS builder
+# Use Node.js 20 Alpine
+FROM node:20-alpine
 
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+# Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy all package.json files first (for better caching)
 COPY package*.json ./
 COPY backend/package*.json ./backend/
 COPY frontend/package*.json ./frontend/
 
-# Install dependencies
+# Install ALL dependencies (including devDependencies for build)
 RUN npm ci
-RUN cd backend && npm ci
-RUN cd frontend && npm ci
 
-# Copy source code
+# Copy all source code
 COPY . .
 
-# Build applications
+# Build both applications
 RUN npm run build
 
-# Production stage
-FROM node:20-alpine AS production
-
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-COPY backend/package*.json ./backend/
-COPY frontend/package*.json ./frontend/
-
-# Install production dependencies only
+# Remove dev dependencies after build
 RUN npm ci --omit=dev
-RUN cd backend && npm ci --omit=dev
-RUN cd frontend && npm ci --omit=dev
 
-# Copy built applications
-COPY --from=builder /app/backend/dist ./backend/dist
-COPY --from=builder /app/frontend/.next ./frontend/.next
-COPY --from=builder /app/frontend/public ./frontend/public
-COPY --from=builder /app/frontend/next.config.ts ./frontend/
+# Create a non-root user for security
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nextjs -u 1001
+
+# Change ownership of the app directory
+RUN chown -R nextjs:nodejs /app
+USER nextjs
 
 # Expose ports
 EXPOSE 3000 3001
